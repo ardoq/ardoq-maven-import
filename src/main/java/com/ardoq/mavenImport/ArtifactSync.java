@@ -14,60 +14,78 @@ import com.ardoq.util.SyncUtil;
 /**
  * A dependency visitor that dumps the graph to Ardoq.
  */
-public class ArdoqDependencyGraphDumper implements DependencyVisitor {
+public class ArtifactSync implements DependencyVisitor {
 
     final SyncUtil ardoqSync;
-    final String COMPONENT_TYPE_PROJECT;
     final String COMPONENT_TYPE_ARTIFACT;
-    
+
     Map<String,String> componentNameIdMap;
+    Map<String,Reference> references;
 
-    public ArdoqDependencyGraphDumper(SyncUtil ardoqSync) {
+    public ArtifactSync(SyncUtil ardoqSync) {
     	this.ardoqSync = ardoqSync;
-    	
-    	COMPONENT_TYPE_PROJECT = ardoqSync.getModel().getComponentTypeByName("Project");
+
     	COMPONENT_TYPE_ARTIFACT = ardoqSync.getModel().getComponentTypeByName("Artifact");
-    	
+
     	componentNameIdMap = new HashMap<String,String>();
+    	references = new HashMap<String,Reference>();
     }
-    
-    
 
 
-    public boolean visitEnter( DependencyNode node ){
-    	String componentName = getComponentName(node);
+    public boolean visitEnter(DependencyNode node){
+    	String componentName = getArtifactComponentName(node.getArtifact());
+
+    	if(componentNameIdMap.containsKey(componentName)){
+    		return true;
+    	}
+
     	Component comp = new Component(componentName, ardoqSync.getWorkspace().getId(), "", COMPONENT_TYPE_ARTIFACT);
+
+    	Map<String,Object> fields = new HashMap<String,Object>();
+    	fields.put("groupId", node.getArtifact().getGroupId());
+    	fields.put("artifactId", node.getArtifact().getArtifactId());
+    	fields.put("version", node.getArtifact().getVersion());
+
+    	comp.setFields(fields);
     	ardoqSync.addComponent(comp);
     	componentNameIdMap.put(componentName,comp.getId());
-    	
+
         return true;
     }
 
 
     public boolean visitLeave(DependencyNode node) {
-    	
         Map<String, Integer> refTypes = ardoqSync.getModel().getReferenceTypes();
         int refType = refTypes.get("Dependency");
-        
-        String sourceName = getComponentName(node);
+
+        Artifact sourceArtifact = node.getArtifact();
+        String sourceName = getArtifactComponentName(sourceArtifact);
         String sourceId = componentNameIdMap.get(sourceName);
         for(DependencyNode child:node.getChildren()){
-        	String targetName = getComponentName(child);
+        	Artifact targetArtifact = child.getArtifact();
+        	String targetName = getArtifactComponentName(targetArtifact);
         	String targetId = componentNameIdMap.get(targetName);
-        	Reference ref = new Reference(ardoqSync.getWorkspace().getId(), "", sourceId, targetId, refType);
-        	ardoqSync.addReference(ref);
+        	Reference ref = new Reference(ardoqSync.getWorkspace().getId(), child.getDependency().getScope(), sourceId, targetId, refType);
+        	references.put(sourceId+","+targetId, ref);
         }
     	return true;
     }
 
-    private String getComponentName(DependencyNode node) {
-    	Artifact artifact = node.getArtifact();
+    public void syncReferences(){
+    	for(Reference ref:references.values()){
+    		System.out.println("adding ref to sync "+ref.getSource()+" "+ref.getTarget());
+    		ardoqSync.addReference(ref);
+    	}
+    }
+
+
+    public static String getArtifactComponentName(Artifact artifact) {
     	String groupId = artifact.getGroupId();
     	String artifactId = artifact.getArtifactId();
     	String version = artifact.getVersion();
-    	
+
     	String componentName = groupId+":"+artifactId+":"+version;
     	return componentName;
     }
-    
+
 }

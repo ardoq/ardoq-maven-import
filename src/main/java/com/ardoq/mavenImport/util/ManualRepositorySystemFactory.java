@@ -1,4 +1,4 @@
-package org.eclipse.aether.examples.manual;
+package com.ardoq.mavenImport.util;
 
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
 import org.eclipse.aether.RepositorySystem;

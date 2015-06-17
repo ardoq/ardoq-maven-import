@@ -1,4 +1,4 @@
-package org.eclipse.aether.examples.util;
+package com.ardoq.mavenImport.util;
 
 import java.io.PrintStream;
 import java.text.DecimalFormat;
