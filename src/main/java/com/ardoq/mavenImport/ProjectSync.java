@@ -132,7 +132,7 @@ public class ProjectSync {
 		CollectResult collectResult = system.collectDependencies(session, collectRequest);
 
 		collectResult.getRoot().accept(new ConsoleDependencyGraphDumper());
-		collectResult.getRoot().accept(new ArtifactSync(ardoqSync));
+		collectResult.getRoot().accept(artifactSync);
 	}
 
 
