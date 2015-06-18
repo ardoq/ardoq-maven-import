@@ -20,6 +20,7 @@ import org.eclipse.aether.collection.CollectRequest;
 import org.eclipse.aether.collection.CollectResult;
 import org.eclipse.aether.collection.DependencyCollectionException;
 import org.eclipse.aether.graph.Dependency;
+import org.eclipse.aether.installation.InstallRequest;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResult;
@@ -70,6 +71,8 @@ public class ProjectSync {
 	private void syncProject(String projectStr) throws Exception{
 
 		File pomFile = new File(projectStr);
+		boolean pomFromFile = pomFile.exists();
+
 		if(!pomFile.exists()){
 			//try parsing input as an artifact descriptor
 			try{
@@ -90,6 +93,16 @@ public class ProjectSync {
 		}
 
 		MavenProject mavenProject = loadProject(pomFile);
+
+		if(pomFromFile){
+			InstallRequest installRequest = new InstallRequest();
+			Artifact pomArtifact = new DefaultArtifact(mavenProject.getGroupId(),mavenProject.getArtifactId(),"pom",mavenProject.getVersion());
+			pomArtifact = pomArtifact.setFile(pomFile);
+			installRequest.addArtifact(pomArtifact);
+			system.install(session, installRequest);
+		}
+
+
 		syncProject(mavenProject);
 	}
 
@@ -102,14 +115,25 @@ public class ProjectSync {
     	}
 
     	Component comp = new Component(componentName, ardoqSync.getWorkspace().getId(), "", COMPONENT_TYPE_PROJECT);
-    	comp.setDescription(project.getDescription());
+
+    	String description = "#Description\n\n"+project.getDescription();
+    	comp.setDescription(description);
+
+    	//TODO: add licenses, url, organization, developers, contributors, mailing lists, etc..
 
     	Map<String,Object> fields = new HashMap<String,Object>();
     	fields.put("groupId", project.getGroupId());
     	fields.put("artifactId", project.getArtifactId());
     	fields.put("version", project.getVersion());
 
-		syncProjectDependencies(project);
+    	comp.setFields(fields);
+    	ardoqSync.addComponent(comp);
+    	componentNameIdMap.put(componentName,comp.getId());
+
+    	DefaultArtifact artifact = new DefaultArtifact(project.getGroupId(),project.getArtifactId(),"pom",project.getVersion());
+		syncProjectDependencies(artifact);
+
+		// TODO: Link project to artifact
 
     	Parent parent = project.getModel().getParent();
     	if(parent!=null){
@@ -124,9 +148,8 @@ public class ProjectSync {
 
 
 
-	private void syncProjectDependencies(MavenProject project) throws DependencyCollectionException {
+	private void syncProjectDependencies(Artifact artifact) throws DependencyCollectionException {
 		CollectRequest collectRequest = new CollectRequest();
-		DefaultArtifact artifact = new DefaultArtifact(project.getGroupId(),project.getArtifactId(),"pom",project.getVersion());
 		collectRequest.setRoot(new Dependency(artifact,""));
 		collectRequest.setRepositories(repos);
 		CollectResult collectResult = system.collectDependencies(session, collectRequest);

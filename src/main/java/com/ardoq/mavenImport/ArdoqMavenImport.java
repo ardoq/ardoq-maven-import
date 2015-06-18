@@ -1,5 +1,8 @@
 package com.ardoq.mavenImport;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -9,6 +12,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 
 import com.ardoq.ArdoqClient;
+import com.ardoq.model.Workspace;
 import com.ardoq.util.SyncUtil;
 
 
@@ -35,7 +39,7 @@ public class ArdoqMavenImport {
 			}
 
 			if(cmd.getArgList().isEmpty()){
-				System.out.println("One or more file names or Maven artifact Ids required");
+				System.out.println("One or more Maven artifact IDs required. For instance: 'io.dropwizard:dropwizard-core:0.8.1'");
 				return;
 			}
 
@@ -46,6 +50,10 @@ public class ArdoqMavenImport {
 
 			ArdoqClient ardoqClient = new ArdoqClient(host,token);
 			SyncUtil ardoqSync = new SyncUtil(ardoqClient,workspace, model);
+
+			Workspace workspaceInstance = ardoqSync.getWorkspace();
+			workspaceInstance.setDescription("Maven POM import "+new SimpleDateFormat("yyyy.MM.dd HH:mm").format(new Date()));
+			ardoqSync.updateWorkspaceIfDifferent(workspaceInstance);
 
 			ProjectSync projectSync = new ProjectSync(ardoqSync);
 			projectSync.syncProjects(cmd.getArgList());

@@ -11,6 +11,7 @@ public class Test {
 
 
 		ArdoqMavenImport.main(new String[]{ "-t",apiToken,"-w",workspaceName,"-m",modelName,"io.dropwizard:dropwizard-core:0.8.1"});;
+//		ArdoqMavenImport.main(new String[]{ "-t",apiToken,"-w",workspaceName,"-m",modelName,"pom.xml"});;
 
 
 	}
