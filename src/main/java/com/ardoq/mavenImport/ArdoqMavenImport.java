@@ -22,6 +22,8 @@ import com.ardoq.util.SyncUtil;
  */
 public class ArdoqMavenImport {
 
+	public enum ReferenceTypes {DEPENDENCY, TEST, PARENT, MODULE};
+
 
 	@SuppressWarnings("unchecked")
 	public static void main(String[] args) throws Exception {

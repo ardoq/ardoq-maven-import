@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.Parent;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
@@ -28,6 +29,7 @@ import org.eclipse.aether.resolution.ArtifactResult;
 import com.ardoq.mavenImport.util.Booter;
 import com.ardoq.mavenImport.util.ConsoleDependencyGraphDumper;
 import com.ardoq.model.Component;
+import com.ardoq.model.Reference;
 import com.ardoq.util.SyncUtil;
 
 public class ProjectSync {
@@ -68,7 +70,7 @@ public class ProjectSync {
 
 
 
-	private void syncProject(String projectStr) throws Exception{
+	private String syncProject(String projectStr) throws Exception{
 
 		File pomFile = new File(projectStr);
 		boolean pomFromFile = pomFile.exists();
@@ -103,23 +105,30 @@ public class ProjectSync {
 		}
 
 
-		syncProject(mavenProject);
+		return syncProject(mavenProject);
 	}
 
 
-	private void syncProject(MavenProject project) throws Exception{
+	private String syncProject(MavenProject project) throws Exception{
     	String componentName = project.getName();
 
     	if(componentNameIdMap.containsKey(componentName)){
-    		return;
+    		return componentNameIdMap.get(componentName);
     	}
 
     	Component comp = new Component(componentName, ardoqSync.getWorkspace().getId(), "", COMPONENT_TYPE_PROJECT);
 
-    	String description = "#Description\n\n"+project.getDescription();
-    	comp.setDescription(description);
+    	String description = "#Description1\n\n"+project.getDescription();
 
-    	//TODO: add licenses, url, organization, developers, contributors, mailing lists, etc..
+    	if(!project.getLicenses().isEmpty()){
+    		description += "\nLicenses\n----\n\n";
+	    	for(License license : project.getLicenses()){
+	    		description += " * "+license.getName()+"\n";
+	    	}
+    	}
+
+    	//TODO: add url, organization, developers, contributors, mailing lists, etc..
+    	comp.setDescription(description);
 
     	Map<String,Object> fields = new HashMap<String,Object>();
     	fields.put("groupId", project.getGroupId());
@@ -133,17 +142,30 @@ public class ProjectSync {
     	DefaultArtifact artifact = new DefaultArtifact(project.getGroupId(),project.getArtifactId(),"pom",project.getVersion());
 		syncProjectDependencies(artifact);
 
-		// TODO: Link project to artifact
+        Map<String, Integer> refTypes = ardoqSync.getModel().getReferenceTypes();
+        int refType = refTypes.get("Dependency");
+        String targetId = artifactSync.getComponentIdFromArtifact(artifact);
+
+        System.out.println("adding relation from project to artifact "+comp.getId()+" "+comp.getName()+" "+targetId+" "+artifact.getArtifactId());
+    	Reference ref = new Reference(ardoqSync.getWorkspace().getId(), "artifact", comp.getId(), targetId, refType);
+    	ardoqSync.addReference(ref);
 
     	Parent parent = project.getModel().getParent();
     	if(parent!=null){
-    		syncProject(parent.getId());
+    		String parentComponentId = syncProject(parent.getId());
+
+    		System.out.println("adding relation from project to parent "+comp.getId()+" "+parentComponentId);
+            int refTypeParent = refTypes.get("Parent");
+            Reference parentRef = new Reference(ardoqSync.getWorkspace().getId(), "artifact", comp.getId(), parentComponentId, refTypeParent);
+        	ardoqSync.addReference(parentRef);
     	}
 
+// TODO: process modules
 //    	for(String module : project.getModules()){
 //
 //    	}
 
+    	return comp.getId();
 	}
 
 

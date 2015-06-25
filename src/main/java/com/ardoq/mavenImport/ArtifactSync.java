@@ -56,7 +56,8 @@ public class ArtifactSync implements DependencyVisitor {
 
     public boolean visitLeave(DependencyNode node) {
         Map<String, Integer> refTypes = ardoqSync.getModel().getReferenceTypes();
-        int refType = refTypes.get("Dependency");
+        int refTypeDep = refTypes.get("Dependency");
+        int refTypeTest = refTypes.get("Test");
 
         Artifact sourceArtifact = node.getArtifact();
         String sourceName = getArtifactComponentName(sourceArtifact);
@@ -65,7 +66,12 @@ public class ArtifactSync implements DependencyVisitor {
         	Artifact targetArtifact = child.getArtifact();
         	String targetName = getArtifactComponentName(targetArtifact);
         	String targetId = componentNameIdMap.get(targetName);
-        	Reference ref = new Reference(ardoqSync.getWorkspace().getId(), child.getDependency().getScope(), sourceId, targetId, refType);
+        	String scope = child.getDependency().getScope();
+        	int refType = refTypeDep;
+        	if("test".equals(scope)){
+        		refType = refTypeTest;
+        	}
+        	Reference ref = new Reference(ardoqSync.getWorkspace().getId(), scope, sourceId, targetId, refType);
         	references.put(sourceId+","+targetId, ref);
         }
     	return true;
@@ -87,5 +93,11 @@ public class ArtifactSync implements DependencyVisitor {
     	String componentName = groupId+":"+artifactId+":"+version;
     	return componentName;
     }
+
+	public String getComponentIdFromArtifact(Artifact artifact){
+		String artifactName = getArtifactComponentName(artifact);
+		return componentNameIdMap.get(artifactName);
+	}
+
 
 }
