@@ -16,88 +16,84 @@ import com.ardoq.util.SyncUtil;
  */
 public class ArtifactSync implements DependencyVisitor {
 
-    final SyncUtil ardoqSync;
-    final String COMPONENT_TYPE_ARTIFACT;
+	final SyncUtil ardoqSync;
+	final String COMPONENT_TYPE_ARTIFACT;
 
-    Map<String,String> componentNameIdMap;
-    Map<String,Reference> references;
+	Map<String, String> componentNameIdMap;
+	Map<String, Reference> references;
 
-    public ArtifactSync(SyncUtil ardoqSync) {
-    	this.ardoqSync = ardoqSync;
+	public ArtifactSync(SyncUtil ardoqSync) {
+		this.ardoqSync = ardoqSync;
 
-    	COMPONENT_TYPE_ARTIFACT = ardoqSync.getModel().getComponentTypeByName("Artifact");
+		COMPONENT_TYPE_ARTIFACT = ardoqSync.getModel().getComponentTypeByName("Artifact");
 
-    	componentNameIdMap = new HashMap<String,String>();
-    	references = new HashMap<String,Reference>();
-    }
+		componentNameIdMap = new HashMap<String, String>();
+		references = new HashMap<String, Reference>();
+	}
 
+	public boolean visitEnter(DependencyNode node) {
+		String componentName = getArtifactComponentName(node.getArtifact());
 
-    public boolean visitEnter(DependencyNode node){
-    	String componentName = getArtifactComponentName(node.getArtifact());
+		if (componentNameIdMap.containsKey(componentName)) {
+			return true;
+		}
 
-    	if(componentNameIdMap.containsKey(componentName)){
-    		return true;
-    	}
+		Component comp = new Component(componentName, ardoqSync.getWorkspace().getId(), "", COMPONENT_TYPE_ARTIFACT);
 
-    	Component comp = new Component(componentName, ardoqSync.getWorkspace().getId(), "", COMPONENT_TYPE_ARTIFACT);
+		Map<String, Object> fields = new HashMap<String, Object>();
+		fields.put("groupId", node.getArtifact().getGroupId());
+		fields.put("artifactId", node.getArtifact().getArtifactId());
+		fields.put("version", node.getArtifact().getVersion());
 
-    	Map<String,Object> fields = new HashMap<String,Object>();
-    	fields.put("groupId", node.getArtifact().getGroupId());
-    	fields.put("artifactId", node.getArtifact().getArtifactId());
-    	fields.put("version", node.getArtifact().getVersion());
+		comp.setFields(fields);
+		ardoqSync.addComponent(comp);
+		componentNameIdMap.put(componentName, comp.getId());
 
-    	comp.setFields(fields);
-    	ardoqSync.addComponent(comp);
-    	componentNameIdMap.put(componentName,comp.getId());
+		return true;
+	}
 
-        return true;
-    }
+	public boolean visitLeave(DependencyNode node) {
+		Map<String, Integer> refTypes = ardoqSync.getModel().getReferenceTypes();
+		int refTypeDep = refTypes.get("Dependency");
+		int refTypeTest = refTypes.get("Test");
 
+		Artifact sourceArtifact = node.getArtifact();
+		String sourceName = getArtifactComponentName(sourceArtifact);
+		String sourceId = componentNameIdMap.get(sourceName);
+		for (DependencyNode child : node.getChildren()) {
+			Artifact targetArtifact = child.getArtifact();
+			String targetName = getArtifactComponentName(targetArtifact);
+			String targetId = componentNameIdMap.get(targetName);
+			String scope = child.getDependency().getScope();
+			int refType = refTypeDep;
+			if ("test".equals(scope)) {
+				refType = refTypeTest;
+			}
+			Reference ref = new Reference(ardoqSync.getWorkspace().getId(), scope, sourceId, targetId, refType);
+			references.put(sourceId + "," + targetId, ref);
+		}
+		return true;
+	}
 
-    public boolean visitLeave(DependencyNode node) {
-        Map<String, Integer> refTypes = ardoqSync.getModel().getReferenceTypes();
-        int refTypeDep = refTypes.get("Dependency");
-        int refTypeTest = refTypes.get("Test");
+	public void syncReferences() {
+		for (Reference ref : references.values()) {
+			System.out.println("adding ref to sync " + ref.getSource() + " " + ref.getTarget());
+			ardoqSync.addReference(ref);
+		}
+	}
 
-        Artifact sourceArtifact = node.getArtifact();
-        String sourceName = getArtifactComponentName(sourceArtifact);
-        String sourceId = componentNameIdMap.get(sourceName);
-        for(DependencyNode child:node.getChildren()){
-        	Artifact targetArtifact = child.getArtifact();
-        	String targetName = getArtifactComponentName(targetArtifact);
-        	String targetId = componentNameIdMap.get(targetName);
-        	String scope = child.getDependency().getScope();
-        	int refType = refTypeDep;
-        	if("test".equals(scope)){
-        		refType = refTypeTest;
-        	}
-        	Reference ref = new Reference(ardoqSync.getWorkspace().getId(), scope, sourceId, targetId, refType);
-        	references.put(sourceId+","+targetId, ref);
-        }
-    	return true;
-    }
+	public static String getArtifactComponentName(Artifact artifact) {
+		String groupId = artifact.getGroupId();
+		String artifactId = artifact.getArtifactId();
+		String version = artifact.getVersion();
 
-    public void syncReferences(){
-    	for(Reference ref:references.values()){
-    		System.out.println("adding ref to sync "+ref.getSource()+" "+ref.getTarget());
-    		ardoqSync.addReference(ref);
-    	}
-    }
+		String componentName = groupId + ":" + artifactId + ":" + version;
+		return componentName;
+	}
 
-
-    public static String getArtifactComponentName(Artifact artifact) {
-    	String groupId = artifact.getGroupId();
-    	String artifactId = artifact.getArtifactId();
-    	String version = artifact.getVersion();
-
-    	String componentName = groupId+":"+artifactId+":"+version;
-    	return componentName;
-    }
-
-	public String getComponentIdFromArtifact(Artifact artifact){
+	public String getComponentIdFromArtifact(Artifact artifact) {
 		String artifactName = getArtifactComponentName(artifact);
 		return componentNameIdMap.get(artifactName);
 	}
-
 
 }

@@ -55,10 +55,10 @@ public class ArdoqMavenImport {
 
 			Workspace workspaceInstance = ardoqSync.getWorkspace();
 			workspaceInstance.setDescription("Maven POM import "+new SimpleDateFormat("yyyy.MM.dd HH:mm").format(new Date()));
-			ardoqSync.updateWorkspaceIfDifferent(workspaceInstance);
 
 			ProjectSync projectSync = new ProjectSync(ardoqSync);
 			projectSync.syncProjects(cmd.getArgList());
+			ardoqSync.updateWorkspaceIfDifferent(workspaceInstance);
 			ardoqSync.deleteNotSyncedItems();
 		}
 		catch (MissingOptionException moe) {

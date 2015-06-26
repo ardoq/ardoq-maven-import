@@ -34,145 +34,148 @@ import com.ardoq.util.SyncUtil;
 
 public class ProjectSync {
 
-    final SyncUtil ardoqSync;
-    final ArtifactSync artifactSync;
-    final String COMPONENT_TYPE_PROJECT;
+	final SyncUtil ardoqSync;
+	final ArtifactSync artifactSync;
+	final String COMPONENT_TYPE_PROJECT;
 
-    Map<String,String> componentNameIdMap;
-
+	Map<String, String> componentNameIdMap;
 
 	final RepositorySystem system;
 	final RepositorySystemSession session;
 	final List<RemoteRepository> repos;
 
-
 	public ProjectSync(SyncUtil ardoqSync) {
-    	this.ardoqSync = ardoqSync;
-    	this.artifactSync = new ArtifactSync(ardoqSync);
+		this.ardoqSync = ardoqSync;
+		this.artifactSync = new ArtifactSync(ardoqSync);
 
 		this.system = Booter.newRepositorySystem();
 		this.session = Booter.newRepositorySystemSession(system);
 		this.repos = Booter.newRepositories(system, session);
 
-    	COMPONENT_TYPE_PROJECT = ardoqSync.getModel().getComponentTypeByName("Project");
+		COMPONENT_TYPE_PROJECT = ardoqSync.getModel().getComponentTypeByName("Project");
 
-    	componentNameIdMap = new HashMap<String,String>();
-    }
+		componentNameIdMap = new HashMap<String, String>();
+	}
 
-
-	public void syncProjects(List<String> projects) throws Exception{
-		for(String project:projects) {
+	public void syncProjects(List<String> projects) throws Exception {
+		for (String project : projects) {
 			syncProject(project);
 		}
 		syncRelations();
 	}
 
-
-
-
-	private String syncProject(String projectStr) throws Exception{
+	private String syncProject(String projectStr) throws Exception {
 
 		File pomFile = new File(projectStr);
 		boolean pomFromFile = pomFile.exists();
 
-		if(!pomFile.exists()){
-			//try parsing input as an artifact descriptor
-			try{
+		if (!pomFile.exists()) {
+			// try parsing input as an artifact descriptor
+			try {
 				Artifact artifact = new DefaultArtifact(projectStr);
-				Artifact pomArtifact = new DefaultArtifact(artifact.getGroupId(),artifact.getArtifactId(),"pom",artifact.getVersion());
+				Artifact pomArtifact = new DefaultArtifact(artifact.getGroupId(), artifact.getArtifactId(), "pom", artifact.getVersion());
 				ArtifactRequest artifactreq = new ArtifactRequest();
 				artifactreq.setArtifact(pomArtifact);
 				artifactreq.setRepositories(repos);
-				ArtifactResult artifactres = system.resolveArtifact( session, artifactreq );
+				ArtifactResult artifactres = system.resolveArtifact(session, artifactreq);
 				pomFile = artifactres.getArtifact().getFile();
-			}
-			catch(IllegalArgumentException ignore){
+			} catch (IllegalArgumentException ignore) {
 				pomFile = null;
 			}
 		}
-		if(pomFile==null || !pomFile.exists()){
-			throw new IllegalArgumentException("Failed to locate Maven project '"+projectStr+"' as either file or artifactDescriptor.");
+		if (pomFile == null || !pomFile.exists()) {
+			throw new IllegalArgumentException("Failed to locate Maven project '" + projectStr + "' as either file or artifactDescriptor.");
 		}
 
 		MavenProject mavenProject = loadProject(pomFile);
 
-		if(pomFromFile){
+		if (pomFromFile) {
 			InstallRequest installRequest = new InstallRequest();
-			Artifact pomArtifact = new DefaultArtifact(mavenProject.getGroupId(),mavenProject.getArtifactId(),"pom",mavenProject.getVersion());
+			Artifact pomArtifact = new DefaultArtifact(mavenProject.getGroupId(), mavenProject.getArtifactId(), "pom", mavenProject.getVersion());
 			pomArtifact = pomArtifact.setFile(pomFile);
 			installRequest.addArtifact(pomArtifact);
 			system.install(session, installRequest);
 		}
 
-
 		return syncProject(mavenProject);
 	}
 
+	private String syncProject(MavenProject project) throws Exception {
+		String componentName = project.getName();
 
-	private String syncProject(MavenProject project) throws Exception{
-    	String componentName = project.getName();
+		if (componentNameIdMap.containsKey(componentName)) {
+			return componentNameIdMap.get(componentName);
+		}
 
-    	if(componentNameIdMap.containsKey(componentName)){
-    		return componentNameIdMap.get(componentName);
-    	}
+		Component ardoqProjectComponent = new Component(componentName, ardoqSync.getWorkspace().getId(), "", COMPONENT_TYPE_PROJECT);
 
-    	Component comp = new Component(componentName, ardoqSync.getWorkspace().getId(), "", COMPONENT_TYPE_PROJECT);
+		ardoqProjectComponent.setDescription(buildProjectDescription(project));
 
-    	String description = "#Description1\n\n"+project.getDescription();
+		Map<String, Object> fields = new HashMap<String, Object>();
+		fields.put("groupId", project.getGroupId());
+		fields.put("artifactId", project.getArtifactId());
+		fields.put("version", project.getVersion());
 
-    	if(!project.getLicenses().isEmpty()){
-    		description += "\nLicenses\n----\n\n";
-	    	for(License license : project.getLicenses()){
-	    		description += " * "+license.getName()+"\n";
-	    	}
-    	}
+		ardoqProjectComponent.setFields(fields);
+		ardoqSync.addComponent(ardoqProjectComponent);
+		componentNameIdMap.put(componentName, ardoqProjectComponent.getId());
 
-    	//TODO: add url, organization, developers, contributors, mailing lists, etc..
-    	comp.setDescription(description);
+		Map<String, Integer> refTypes = ardoqSync.getModel().getReferenceTypes();
 
-    	Map<String,Object> fields = new HashMap<String,Object>();
-    	fields.put("groupId", project.getGroupId());
-    	fields.put("artifactId", project.getArtifactId());
-    	fields.put("version", project.getVersion());
+		syncProjectArtifact(project, ardoqProjectComponent, refTypes);
+		syncProjectParent(project, ardoqProjectComponent, refTypes);
 
-    	comp.setFields(fields);
-    	ardoqSync.addComponent(comp);
-    	componentNameIdMap.put(componentName,comp.getId());
+		// TODO: process modules
+		// for(String module : project.getModules()){
+		//
+		// }
 
-    	DefaultArtifact artifact = new DefaultArtifact(project.getGroupId(),project.getArtifactId(),"pom",project.getVersion());
-		syncProjectDependencies(artifact);
-
-        Map<String, Integer> refTypes = ardoqSync.getModel().getReferenceTypes();
-        int refType = refTypes.get("Dependency");
-        String targetId = artifactSync.getComponentIdFromArtifact(artifact);
-
-        System.out.println("adding relation from project to artifact "+comp.getId()+" "+comp.getName()+" "+targetId+" "+artifact.getArtifactId());
-    	Reference ref = new Reference(ardoqSync.getWorkspace().getId(), "artifact", comp.getId(), targetId, refType);
-    	ardoqSync.addReference(ref);
-
-    	Parent parent = project.getModel().getParent();
-    	if(parent!=null){
-    		String parentComponentId = syncProject(parent.getId());
-
-    		System.out.println("adding relation from project to parent "+comp.getId()+" "+parentComponentId);
-            int refTypeParent = refTypes.get("Parent");
-            Reference parentRef = new Reference(ardoqSync.getWorkspace().getId(), "artifact", comp.getId(), parentComponentId, refTypeParent);
-        	ardoqSync.addReference(parentRef);
-    	}
-
-// TODO: process modules
-//    	for(String module : project.getModules()){
-//
-//    	}
-
-    	return comp.getId();
+		return ardoqProjectComponent.getId();
 	}
 
+	private String buildProjectDescription(MavenProject project) {
+		// TODO: add url, organization, developers, contributors, mailing lists,
+		// etc..
 
+		String description = "#Description1\n\n" + project.getDescription();
+
+		if (!project.getLicenses().isEmpty()) {
+			description += "\nLicenses\n----\n\n";
+			for (License license : project.getLicenses()) {
+				description += " * " + license.getName() + "\n";
+			}
+		}
+		return description;
+	}
+
+	private void syncProjectArtifact(MavenProject project, Component ardoqProjectComponent, Map<String, Integer> refTypes) throws DependencyCollectionException {
+		int refType = refTypes.get("Dependency");
+		DefaultArtifact artifact = new DefaultArtifact(project.getGroupId(), project.getArtifactId(), "pom", project.getVersion());
+		syncProjectDependencies(artifact);
+
+		String targetId = artifactSync.getComponentIdFromArtifact(artifact);
+
+		System.out.println("adding relation from project to artifact " + ardoqProjectComponent.getId() + " " + ardoqProjectComponent.getName() + " " + targetId + " "
+				+ artifact.getArtifactId());
+		Reference ref = new Reference(ardoqSync.getWorkspace().getId(), "artifact", ardoqProjectComponent.getId(), targetId, refType);
+		ardoqSync.addReference(ref);
+	}
+
+	private void syncProjectParent(MavenProject project, Component ardoqProjectComponent, Map<String, Integer> refTypes) throws Exception {
+		Parent parent = project.getModel().getParent();
+		if (parent != null) {
+			String parentComponentId = syncProject(parent.getId());
+
+			System.out.println("adding relation from project to parent " + ardoqProjectComponent.getId() + " " + parentComponentId);
+			int refTypeParent = refTypes.get("Parent");
+			Reference parentRef = new Reference(ardoqSync.getWorkspace().getId(), "artifact", ardoqProjectComponent.getId(), parentComponentId, refTypeParent);
+			ardoqSync.addReference(parentRef);
+		}
+	}
 
 	private void syncProjectDependencies(Artifact artifact) throws DependencyCollectionException {
 		CollectRequest collectRequest = new CollectRequest();
-		collectRequest.setRoot(new Dependency(artifact,""));
+		collectRequest.setRoot(new Dependency(artifact, ""));
 		collectRequest.setRepositories(repos);
 		CollectResult collectResult = system.collectDependencies(session, collectRequest);
 
@@ -180,12 +183,9 @@ public class ProjectSync {
 		collectResult.getRoot().accept(artifactSync);
 	}
 
-
 	private void syncRelations() {
 		artifactSync.syncReferences();
 	}
-
-
 
 	private static MavenProject loadProject(File pomFile) throws IOException, XmlPullParserException {
 		MavenXpp3Reader mavenReader = new MavenXpp3Reader();
@@ -201,6 +201,5 @@ public class ProjectSync {
 			reader.close();
 		}
 	}
-
 
 }
