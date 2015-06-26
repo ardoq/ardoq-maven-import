@@ -2,7 +2,6 @@ package com.ardoq.mavenImport;
 
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +11,7 @@ import org.apache.maven.model.Model;
 import org.apache.maven.model.Parent;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.project.MavenProject;
-import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+import org.codehaus.plexus.util.IOUtil;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
@@ -21,9 +20,9 @@ import org.eclipse.aether.collection.CollectRequest;
 import org.eclipse.aether.collection.CollectResult;
 import org.eclipse.aether.collection.DependencyCollectionException;
 import org.eclipse.aether.graph.Dependency;
-import org.eclipse.aether.installation.InstallRequest;
 import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.resolution.ArtifactRequest;
+import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.ArtifactResult;
 
 import com.ardoq.mavenImport.util.Booter;
@@ -64,43 +63,26 @@ public class ProjectSync {
 		syncRelations();
 	}
 
-	private String syncProject(String projectStr) throws Exception {
+	private String syncProject(String projectStr) throws ArtifactResolutionException  {
 
-		File pomFile = new File(projectStr);
-		boolean pomFromFile = pomFile.exists();
-
-		if (!pomFile.exists()) {
-			// try parsing input as an artifact descriptor
-			try {
-				Artifact artifact = new DefaultArtifact(projectStr);
-				Artifact pomArtifact = new DefaultArtifact(artifact.getGroupId(), artifact.getArtifactId(), "pom", artifact.getVersion());
-				ArtifactRequest artifactreq = new ArtifactRequest();
-				artifactreq.setArtifact(pomArtifact);
-				artifactreq.setRepositories(repos);
-				ArtifactResult artifactres = system.resolveArtifact(session, artifactreq);
-				pomFile = artifactres.getArtifact().getFile();
-			} catch (IllegalArgumentException ignore) {
-				pomFile = null;
-			}
-		}
-		if (pomFile == null || !pomFile.exists()) {
-			throw new IllegalArgumentException("Failed to locate Maven project '" + projectStr + "' as either file or artifactDescriptor.");
-		}
-
+		Artifact artifact = new DefaultArtifact(projectStr);
+		Artifact pomArtifact = new DefaultArtifact(artifact.getGroupId(), artifact.getArtifactId(), "pom", artifact.getVersion());
+		ArtifactRequest artifactreq = new ArtifactRequest();
+		artifactreq.setArtifact(pomArtifact);
+		artifactreq.setRepositories(repos);
+		ArtifactResult artifactres = system.resolveArtifact(session, artifactreq);
+		File pomFile = artifactres.getArtifact().getFile();
 		MavenProject mavenProject = loadProject(pomFile);
-
-		if (pomFromFile) {
-			InstallRequest installRequest = new InstallRequest();
-			Artifact pomArtifact = new DefaultArtifact(mavenProject.getGroupId(), mavenProject.getArtifactId(), "pom", mavenProject.getVersion());
-			pomArtifact = pomArtifact.setFile(pomFile);
-			installRequest.addArtifact(pomArtifact);
-			system.install(session, installRequest);
-		}
 
 		return syncProject(mavenProject);
 	}
 
-	private String syncProject(MavenProject project) throws Exception {
+	/**
+	 * Returns Ardoq project component ID
+	 * @param project
+	 * @return
+	 */
+	private String syncProject(MavenProject project) {
 		String componentName = project.getName();
 
 		if (componentNameIdMap.containsKey(componentName)) {
@@ -124,18 +106,13 @@ public class ProjectSync {
 
 		syncProjectArtifact(project, ardoqProjectComponent, refTypes);
 		syncProjectParent(project, ardoqProjectComponent, refTypes);
-
-		// TODO: process modules
-		// for(String module : project.getModules()){
-		//
-		// }
+		syncProjectModules(project, ardoqProjectComponent, refTypes);
 
 		return ardoqProjectComponent.getId();
 	}
 
 	private String buildProjectDescription(MavenProject project) {
-		// TODO: add url, organization, developers, contributors, mailing lists,
-		// etc..
+		// TODO: add url, organization, developers, contributors, mailing lists, etc..
 
 		String description = "#Description1\n\n" + project.getDescription();
 
@@ -148,46 +125,84 @@ public class ProjectSync {
 		return description;
 	}
 
-	private void syncProjectArtifact(MavenProject project, Component ardoqProjectComponent, Map<String, Integer> refTypes) throws DependencyCollectionException {
+	/**
+	 * NB! only modules named the same as the artifact will be synced
+	 * @param project
+	 * @param ardoqProjectComponent
+	 * @param refTypes
+	 * @throws DependencyCollectionException
+	 */
+	private void syncProjectModules(MavenProject project, Component ardoqProjectComponent, Map<String, Integer> refTypes) {
+		for (String module : project.getModules()) {
+			try {
+				String groupId = project.getGroupId();
+				String artifactId = module;
+				String version = project.getVersion();
+
+				String id = groupId + ":" + artifactId + ":" + version;
+				String moduleComponentId = syncProject(id);
+
+				int refType = refTypes.get("Module");
+				Reference ref = new Reference(ardoqSync.getWorkspace().getId(), "artifact", ardoqProjectComponent.getId(), moduleComponentId, refType);
+				ardoqSync.addReference(ref);
+
+			} catch (ArtifactResolutionException e) {
+				System.out.println("***************************************************************");
+				System.out.println("* Error syncing Maven module " + module + " of " + project.getName());
+				System.out.println("* This tool assumes that the module name equals the artifactId. ");
+				System.out.println("* -> ignoring and carrying on.. ");
+				System.out.println("***************************************************************");
+			}
+		}
+	}
+
+	private void syncProjectArtifact(MavenProject project, Component ardoqProjectComponent, Map<String, Integer> refTypes) {
 		int refType = refTypes.get("Dependency");
 		DefaultArtifact artifact = new DefaultArtifact(project.getGroupId(), project.getArtifactId(), "pom", project.getVersion());
 		syncProjectDependencies(artifact);
 
 		String targetId = artifactSync.getComponentIdFromArtifact(artifact);
 
-		System.out.println("adding relation from project to artifact " + ardoqProjectComponent.getId() + " " + ardoqProjectComponent.getName() + " " + targetId + " "
-				+ artifact.getArtifactId());
+		System.out.println("adding relation from project to artifact " + ardoqProjectComponent.getId() + " " + ardoqProjectComponent.getName() + " " + targetId + " "+ artifact.getArtifactId());
 		Reference ref = new Reference(ardoqSync.getWorkspace().getId(), "artifact", ardoqProjectComponent.getId(), targetId, refType);
 		ardoqSync.addReference(ref);
 	}
 
-	private void syncProjectParent(MavenProject project, Component ardoqProjectComponent, Map<String, Integer> refTypes) throws Exception {
+	private void syncProjectParent(MavenProject project, Component ardoqProjectComponent, Map<String, Integer> refTypes) {
 		Parent parent = project.getModel().getParent();
 		if (parent != null) {
-			String parentComponentId = syncProject(parent.getId());
+			try {
+				String parentComponentId = syncProject(parent.getId());
 
-			System.out.println("adding relation from project to parent " + ardoqProjectComponent.getId() + " " + parentComponentId);
-			int refTypeParent = refTypes.get("Parent");
-			Reference parentRef = new Reference(ardoqSync.getWorkspace().getId(), "artifact", ardoqProjectComponent.getId(), parentComponentId, refTypeParent);
-			ardoqSync.addReference(parentRef);
+				System.out.println("adding relation from project to parent " + ardoqProjectComponent.getId() + " " + parentComponentId);
+				int refTypeParent = refTypes.get("Parent");
+				Reference parentRef = new Reference(ardoqSync.getWorkspace().getId(), "artifact", ardoqProjectComponent.getId(), parentComponentId, refTypeParent);
+				ardoqSync.addReference(parentRef);
+			} catch (ArtifactResolutionException e) {
+				throw new RuntimeException("Error reading Maven project parent: "+parent.getId(),e);
+			}
 		}
 	}
 
-	private void syncProjectDependencies(Artifact artifact) throws DependencyCollectionException {
-		CollectRequest collectRequest = new CollectRequest();
-		collectRequest.setRoot(new Dependency(artifact, ""));
-		collectRequest.setRepositories(repos);
-		CollectResult collectResult = system.collectDependencies(session, collectRequest);
+	private void syncProjectDependencies(Artifact artifact) {
+		try {
+			CollectRequest collectRequest = new CollectRequest();
+			collectRequest.setRoot(new Dependency(artifact, ""));
+			collectRequest.setRepositories(repos);
+			CollectResult collectResult = system.collectDependencies(session, collectRequest);
 
-		collectResult.getRoot().accept(new ConsoleDependencyGraphDumper());
-		collectResult.getRoot().accept(artifactSync);
+			collectResult.getRoot().accept(new ConsoleDependencyGraphDumper());
+			collectResult.getRoot().accept(artifactSync);
+		} catch (DependencyCollectionException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	private void syncRelations() {
 		artifactSync.syncReferences();
 	}
 
-	private static MavenProject loadProject(File pomFile) throws IOException, XmlPullParserException {
+	private static MavenProject loadProject(File pomFile) {
 		MavenXpp3Reader mavenReader = new MavenXpp3Reader();
 		FileReader reader = null;
 
@@ -197,8 +212,10 @@ public class ProjectSync {
 			model.setPomFile(pomFile);
 
 			return new MavenProject(model);
+		} catch (Exception e) {
+			throw new RuntimeException("Error reading Maven project from file",e);
 		} finally {
-			reader.close();
+			IOUtil.close(reader);
 		}
 	}
 

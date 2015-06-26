@@ -9,9 +9,7 @@ public class Test {
 		String modelName = "Maven";
 
 		ArdoqMavenImport.main(new String[] { "-t", apiToken, "-w", workspaceName, "-m", modelName, "io.dropwizard:dropwizard-core:0.8.1" });
-		;
-		// ArdoqMavenImport.main(new String[]{
-		// "-t",apiToken,"-w",workspaceName,"-m",modelName,"pom.xml"});;
+//		ArdoqMavenImport.main(new String[]{"-t",apiToken,"-w",workspaceName,"-m",modelName,"pom.xml"});;
 
 	}
 }

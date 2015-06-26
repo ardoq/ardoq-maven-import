@@ -46,6 +46,7 @@ public class ArtifactSync implements DependencyVisitor {
 		fields.put("version", node.getArtifact().getVersion());
 
 		comp.setFields(fields);
+		System.out.println("Adding component "+componentName+" of type "+COMPONENT_TYPE_ARTIFACT);
 		ardoqSync.addComponent(comp);
 		componentNameIdMap.put(componentName, comp.getId());
 
