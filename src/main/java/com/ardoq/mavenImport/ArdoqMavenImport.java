@@ -48,9 +48,11 @@ public class ArdoqMavenImport {
 			String host = cmd.getOptionValue("h","https://app.ardoq.com");
 			String token = cmd.getOptionValue("t");
 			String model = cmd.getOptionValue("m", "Maven");
+			String org = cmd.getOptionValue("o","ardoq");
 			String workspace = cmd.getOptionValue("w");
 
 			ArdoqClient ardoqClient = new ArdoqClient(host,token);
+			ardoqClient.setOrganization(org);
 			SyncUtil ardoqSync = new SyncUtil(ardoqClient,workspace, model);
 
 			Workspace workspaceInstance = ardoqSync.getWorkspace();

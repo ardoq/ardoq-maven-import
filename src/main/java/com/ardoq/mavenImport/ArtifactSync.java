@@ -61,6 +61,11 @@ public class ArtifactSync implements DependencyVisitor {
 		Artifact sourceArtifact = node.getArtifact();
 		String sourceName = getArtifactComponentName(sourceArtifact);
 		String sourceId = componentNameIdMap.get(sourceName);
+		if(sourceId==null) {
+			System.err.println("Source "+sourceName+ " not found.");
+			return false;
+		}
+		
 		for (DependencyNode child : node.getChildren()) {
 			Artifact targetArtifact = child.getArtifact();
 			String targetName = getArtifactComponentName(targetArtifact);

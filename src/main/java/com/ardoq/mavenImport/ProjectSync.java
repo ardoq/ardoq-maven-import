@@ -24,6 +24,7 @@ import org.eclipse.aether.repository.RemoteRepository;
 import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.ArtifactResult;
+import org.slf4j.Logger;
 
 import com.ardoq.mavenImport.util.Booter;
 import com.ardoq.mavenImport.util.ConsoleDependencyGraphDumper;
@@ -32,6 +33,7 @@ import com.ardoq.model.Reference;
 import com.ardoq.util.SyncUtil;
 
 public class ProjectSync {
+	
 
 	final SyncUtil ardoqSync;
 	final ArtifactSync artifactSync;
@@ -142,9 +144,14 @@ public class ProjectSync {
 				String id = groupId + ":" + artifactId + ":" + version;
 				String moduleComponentId = syncProject(id);
 
-				int refType = refTypes.get("Module");
-				Reference ref = new Reference(ardoqSync.getWorkspace().getId(), "artifact", ardoqProjectComponent.getId(), moduleComponentId, refType);
-				ardoqSync.addReference(ref);
+				if(moduleComponentId!=null) {
+					int refType = refTypes.get("Module");
+					Reference ref = new Reference(ardoqSync.getWorkspace().getId(), "artifact", ardoqProjectComponent.getId(), moduleComponentId, refType);
+					ardoqSync.addReference(ref);
+				}
+				else{
+					System.err.println("Error adding reference from "+ardoqProjectComponent.getId()+ " "+moduleComponentId);
+				}
 
 			} catch (ArtifactResolutionException e) {
 				System.out.println("***************************************************************");
@@ -161,11 +168,17 @@ public class ProjectSync {
 		DefaultArtifact artifact = new DefaultArtifact(project.getGroupId(), project.getArtifactId(), "pom", project.getVersion());
 		syncProjectDependencies(artifact);
 
+		String sourceId = ardoqProjectComponent.getId();
 		String targetId = artifactSync.getComponentIdFromArtifact(artifact);
 
-		System.out.println("adding relation from project to artifact " + ardoqProjectComponent.getId() + " " + ardoqProjectComponent.getName() + " " + targetId + " "+ artifact.getArtifactId());
-		Reference ref = new Reference(ardoqSync.getWorkspace().getId(), "artifact", ardoqProjectComponent.getId(), targetId, refType);
-		ardoqSync.addReference(ref);
+		if(sourceId!=null && targetId!=null){
+			System.out.println("adding reference from project to artifact " + sourceId + " " + ardoqProjectComponent.getName() + " " + targetId + " "+ artifact.getArtifactId());
+			Reference ref = new Reference(ardoqSync.getWorkspace().getId(), "artifact", ardoqProjectComponent.getId(), targetId, refType);
+			ardoqSync.addReference(ref);
+		}
+		else{
+			System.err.println("Error creating reference from "+ardoqProjectComponent.getName()+" to "+artifact.getArtifactId()+".. sourceId: "+sourceId+", targetId: "+targetId);
+		}
 	}
 
 	private void syncProjectParent(MavenProject project, Component ardoqProjectComponent, Map<String, Integer> refTypes) {
@@ -174,10 +187,15 @@ public class ProjectSync {
 			try {
 				String parentComponentId = syncProject(parent.getId());
 
-				System.out.println("adding relation from project to parent " + ardoqProjectComponent.getId() + " " + parentComponentId);
-				int refTypeParent = refTypes.get("Parent");
-				Reference parentRef = new Reference(ardoqSync.getWorkspace().getId(), "artifact", ardoqProjectComponent.getId(), parentComponentId, refTypeParent);
-				ardoqSync.addReference(parentRef);
+				if(ardoqProjectComponent.getId()!=null && parentComponentId!=null) {
+					System.out.println("reference relation from project to parent " + ardoqProjectComponent.getId() + " " + parentComponentId);
+					int refTypeParent = refTypes.get("Parent");
+					Reference parentRef = new Reference(ardoqSync.getWorkspace().getId(), "artifact", ardoqProjectComponent.getId(), parentComponentId, refTypeParent);
+					ardoqSync.addReference(parentRef);
+				}
+				else{
+					System.err.println("Error creating reference from "+ardoqProjectComponent.getId() + " to " + parentComponentId);
+				}
 			} catch (ArtifactResolutionException e) {
 				throw new RuntimeException("Error reading Maven project parent: "+parent.getId(),e);
 			}
