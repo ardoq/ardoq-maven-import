@@ -11,7 +11,11 @@ Use the provided Maven template model in Ardoq directly, or as a template.
 Requires a workspace with only two top level page types
 
 * Project
-* Artifact
+* Group
+  * Artifact
+    * Version
+
+Projects can link to Project and Version. Version can link to Version
 
 Fields:
 * artifactId
@@ -22,15 +26,15 @@ Fields:
 Relations:
 * Dependency (includes run time and comile time dependencies)
 * Test scope dependency
-* Parent (only applies to Projects)
-* Module (only applies to Projects)
+* Parent (only applies to Project)
+* Module (only applies to Project)
 
 
 
 # Example usage
 ```
 mvn install
-java -jar target/ardoq-maven-import-0.1.jar -t <apiToken> -w <workspace> -m <modelName> io.dropwizard:dropwizard-core:0.8.1
+java -jar target/ardoq-maven-import-0.1.jar -t <apiToken> -w <workspace> -m <modelName> -o <organization> io.dropwizard:dropwizard-core:0.8.1
 ```
 
 

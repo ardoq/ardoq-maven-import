@@ -101,7 +101,7 @@ public class ProjectSync {
 		fields.put("version", project.getVersion());
 
 		ardoqProjectComponent.setFields(fields);
-		ardoqSync.addComponent(ardoqProjectComponent);
+		ardoqProjectComponent = ardoqSync.addComponent(ardoqProjectComponent);
 		componentNameIdMap.put(componentName, ardoqProjectComponent.getId());
 
 		Map<String, Integer> refTypes = ardoqSync.getModel().getReferenceTypes();

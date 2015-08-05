@@ -115,6 +115,9 @@ public class ArdoqMavenImport {
 
 		Option model = new Option("m","model",true,"Ardoq model name - defaults to Maven");
 		options.addOption(model);
+		
+		Option organization = new Option("o","organization",true,"Ardoq organization name");
+		options.addOption(organization);
 
 		Option help = new Option("help", "print this help message");
 		options.addOption(help);
