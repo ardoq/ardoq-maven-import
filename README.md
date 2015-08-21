@@ -1,4 +1,4 @@
-This project serves as an example to how to synchronize a number of Maven projects into an Ardoq workspace. 
+This project serves as an example to how to synchronize a number of Maven projects into an Ardoq workspace.
 
 
 Please note that the workspace will be overwritten when running the sync, so use a different workspace with implicit references for your manually entered docs.
@@ -34,7 +34,7 @@ Relations:
 # Example usage
 ```
 mvn install
-java -jar target/ardoq-maven-import-0.1.jar -t <apiToken> -w <workspace> -m <modelName> -o <organization> io.dropwizard:dropwizard-core:0.8.1
+java -jar target/ardoq-maven-import-0.1-bundle.jar -h http://dockerhost -t <apiToken> -w <workspace> -m <modelName> -o <organization> io.dropwizard:dropwizard-core:0.8.1
 ```
 
 
