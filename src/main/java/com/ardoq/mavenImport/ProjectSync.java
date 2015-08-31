@@ -1,33 +1,21 @@
 package com.ardoq.mavenImport;
 
-import java.io.File;
-import java.io.FileReader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.maven.model.Developer;
 import org.apache.maven.model.License;
-import org.apache.maven.model.Model;
 import org.apache.maven.model.Parent;
-import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.project.MavenProject;
-import org.codehaus.plexus.util.IOUtil;
-import org.eclipse.aether.RepositorySystem;
-import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.artifact.DefaultArtifact;
 import org.eclipse.aether.collection.CollectRequest;
 import org.eclipse.aether.collection.CollectResult;
 import org.eclipse.aether.collection.DependencyCollectionException;
 import org.eclipse.aether.graph.Dependency;
-import org.eclipse.aether.repository.RemoteRepository;
-import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
-import org.eclipse.aether.resolution.ArtifactResult;
-import org.eclipse.aether.util.repository.AuthenticationBuilder;
-import org.slf4j.Logger;
 
-import com.ardoq.mavenImport.util.Booter;
 import com.ardoq.mavenImport.util.ConsoleDependencyGraphDumper;
 import com.ardoq.model.Component;
 import com.ardoq.model.Reference;
@@ -42,37 +30,19 @@ public class ProjectSync {
 
     Map<String, String> componentNameIdMap;
 
-    final RepositorySystem system;
-    final RepositorySystemSession session;
-    final List<RemoteRepository> repos;
+    final MavenUtil mavenUtil;
 
-    public ProjectSync(SyncUtil ardoqSync) {
+    public ProjectSync(SyncUtil ardoqSync, MavenUtil mavenUtil) {
         this.ardoqSync = ardoqSync;
         this.artifactSync = new ArtifactSync(ardoqSync);
-
-        this.system = Booter.newRepositorySystem();
-        this.session = Booter.newRepositorySystemSession(system);
-        this.repos = Booter.newRepositories(system, session);
-
+        this.mavenUtil = mavenUtil;
 
         COMPONENT_TYPE_PROJECT = ardoqSync.getModel().getComponentTypeByName("Project");
 
         componentNameIdMap = new HashMap<String, String>();
     }
 
-    public void addRepository(String url){
-        RemoteRepository.Builder b = new RemoteRepository.Builder("custom","default",url);
-        this.repos.add(b.build());
-    }
 
-    public void addRepository(String url, String username, String password) {
-        RemoteRepository.Builder b = new RemoteRepository.Builder("custom","default",url);
-        AuthenticationBuilder authBuilder = new AuthenticationBuilder();
-        authBuilder.addUsername(username);
-        authBuilder.addPassword(password);
-        b.setAuthentication(authBuilder.build());
-        this.repos.add(b.build());
-    }
 
     public void syncProjects(List<String> projects) throws Exception {
         for (String project : projects) {
@@ -81,19 +51,11 @@ public class ProjectSync {
         syncRelations();
     }
 
-    private String syncProject(String projectStr) throws ArtifactResolutionException  {
-
-        Artifact artifact = new DefaultArtifact(projectStr);
-        Artifact pomArtifact = new DefaultArtifact(artifact.getGroupId(), artifact.getArtifactId(), "pom", artifact.getVersion());
-        ArtifactRequest artifactreq = new ArtifactRequest();
-        artifactreq.setArtifact(pomArtifact);
-        artifactreq.setRepositories(repos);
-        ArtifactResult artifactres = system.resolveArtifact(session, artifactreq);
-        File pomFile = artifactres.getArtifact().getFile();
-        MavenProject mavenProject = loadProject(pomFile);
-
+    public String syncProject(String projectStr) throws ArtifactResolutionException  {
+        MavenProject mavenProject = mavenUtil.loadProject(projectStr);
         return syncProject(mavenProject);
     }
+
 
     /**
      * Returns Ardoq project component ID
@@ -132,7 +94,7 @@ public class ProjectSync {
     private String buildProjectDescription(MavenProject project) {
         // TODO: add url, organization, developers, contributors, mailing lists, etc..
 
-        String description = "#Description1\n\n" + project.getDescription();
+        String description = "#Description\n\n" + project.getDescription();
 
         if (!project.getLicenses().isEmpty()) {
             description += "\nLicenses\n----\n\n";
@@ -140,6 +102,14 @@ public class ProjectSync {
                 description += " * " + license.getName() + "\n";
             }
         }
+
+        if( !project.getDevelopers().isEmpty()) {
+            description += "\nDevelopers\n----\n\n";
+            for (Developer developer : project.getDevelopers()) {
+                description += " * "+developer.getName()+" ("+developer.getEmail()+")";
+            }
+        }
+
         return description;
     }
 
@@ -222,8 +192,8 @@ public class ProjectSync {
         try {
             CollectRequest collectRequest = new CollectRequest();
             collectRequest.setRoot(new Dependency(artifact, ""));
-            collectRequest.setRepositories(repos);
-            CollectResult collectResult = system.collectDependencies(session, collectRequest);
+            collectRequest.setRepositories(mavenUtil.getRepos());
+            CollectResult collectResult = mavenUtil.getSystem().collectDependencies(mavenUtil.getSession(), collectRequest);
 
             collectResult.getRoot().accept(new ConsoleDependencyGraphDumper());
             collectResult.getRoot().accept(artifactSync);
@@ -236,21 +206,5 @@ public class ProjectSync {
         artifactSync.syncReferences();
     }
 
-    private static MavenProject loadProject(File pomFile) {
-        MavenXpp3Reader mavenReader = new MavenXpp3Reader();
-        FileReader reader = null;
-
-        try {
-            reader = new FileReader(pomFile);
-            Model model = mavenReader.read(reader);
-            model.setPomFile(pomFile);
-
-            return new MavenProject(model);
-        } catch (Exception e) {
-            throw new RuntimeException("Error reading Maven project from file",e);
-        } finally {
-            IOUtil.close(reader);
-        }
-    }
 
 }

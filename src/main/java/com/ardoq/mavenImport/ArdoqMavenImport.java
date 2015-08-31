@@ -47,21 +47,22 @@ public class ArdoqMavenImport {
 
             String host = cmd.getOptionValue("h","https://app.ardoq.com");
             String token = cmd.getOptionValue("t");
-            String model = cmd.getOptionValue("m", "Maven");
+            String modelName = cmd.getOptionValue("m", "Maven");
             String org = cmd.getOptionValue("o","ardoq");
             String workspace = cmd.getOptionValue("w");
 
             ArdoqClient ardoqClient = new ArdoqClient(host,token);
             ardoqClient.setOrganization(org);
 
-            ardoqClient.model().findOrCreate("Maven", ArdoqMavenImport.class.getResourceAsStream("/model.json"));
+            ardoqClient.model().findOrCreate(modelName, ArdoqMavenImport.class.getResourceAsStream("/model.json"));
 
-            SyncUtil ardoqSync = new SyncUtil(ardoqClient,workspace, model);
+            SyncUtil ardoqSync = new SyncUtil(ardoqClient,workspace,modelName);
 
             Workspace workspaceInstance = ardoqSync.getWorkspace();
             workspaceInstance.setDescription("Maven POM import "+new SimpleDateFormat("yyyy.MM.dd HH:mm").format(new Date()));
 
-            ProjectSync projectSync = new ProjectSync(ardoqSync);
+            MavenUtil mavenUtil = new MavenUtil(System.out);
+            ProjectSync projectSync = new ProjectSync(ardoqSync,mavenUtil);
             projectSync.syncProjects(cmd.getArgList());
             ardoqSync.updateWorkspaceIfDifferent(workspaceInstance);
             ardoqSync.deleteNotSyncedItems();

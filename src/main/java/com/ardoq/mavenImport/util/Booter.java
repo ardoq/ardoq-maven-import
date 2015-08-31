@@ -1,5 +1,6 @@
 package com.ardoq.mavenImport.util;
 
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -25,7 +26,7 @@ public class Booter
         // return org.eclipse.aether.examples.plexus.PlexusRepositorySystemFactory.newRepositorySystem();
     }
 
-    public static DefaultRepositorySystemSession newRepositorySystemSession( RepositorySystem system )
+    public static DefaultRepositorySystemSession newRepositorySystemSession( RepositorySystem system, PrintStream out)
     {
         DefaultRepositorySystemSession session = MavenRepositorySystemUtils.newSession();
 
@@ -33,7 +34,7 @@ public class Booter
         session.setLocalRepositoryManager( system.newLocalRepositoryManager( session, localRepo ) );
 
         session.setTransferListener( new ConsoleTransferListener() );
-        session.setRepositoryListener( new ConsoleRepositoryListener() );
+        session.setRepositoryListener( new ConsoleRepositoryListener(out) );
 
         // uncomment to generate dirty trees
         // session.setDependencyGraphTransformer( null );
