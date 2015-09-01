@@ -167,6 +167,7 @@ public class ArtifactSync implements DependencyVisitor {
             System.out.println("adding ref to sync " + ref.getSource() + " " + ref.getTarget());
             ardoqSync.addReference(ref);
         }
+        references.clear();
     }
 
     public static String getArtifactGroupComponentName(Artifact artifact) {

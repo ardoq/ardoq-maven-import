@@ -48,12 +48,13 @@ public class ProjectSync {
         for (String project : projects) {
             syncProject(project);
         }
-        syncRelations();
     }
 
     public String syncProject(String projectStr) throws ArtifactResolutionException  {
         MavenProject mavenProject = mavenUtil.loadProject(projectStr);
-        return syncProject(mavenProject);
+        String ret = syncProject(mavenProject);
+        syncRelations();
+        return ret;
     }
 
 
