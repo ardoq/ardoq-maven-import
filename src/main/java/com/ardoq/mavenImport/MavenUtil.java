@@ -26,8 +26,10 @@ public class MavenUtil {
     final RepositorySystem system;
     final RepositorySystemSession session;
     final List<RemoteRepository> repos;
+    final PrintStream printStream;
 
     public MavenUtil(PrintStream out){
+        this.printStream = out;
         this.system = Booter.newRepositorySystem();
         this.session = Booter.newRepositorySystemSession(system, out);
         this.repos = Booter.newRepositories(system, session);
@@ -43,6 +45,10 @@ public class MavenUtil {
 
     public List<RemoteRepository> getRepos() {
         return repos;
+    }
+
+    public PrintStream getPrintStream() {
+        return printStream;
     }
 
     public void addRepository(String url){

@@ -33,7 +33,7 @@ public class Booter
         LocalRepository localRepo = new LocalRepository( "target/local-repo" );
         session.setLocalRepositoryManager( system.newLocalRepositoryManager( session, localRepo ) );
 
-        session.setTransferListener( new ConsoleTransferListener() );
+        session.setTransferListener( new ConsoleTransferListener(out) );
         session.setRepositoryListener( new ConsoleRepositoryListener(out) );
 
         // uncomment to generate dirty trees

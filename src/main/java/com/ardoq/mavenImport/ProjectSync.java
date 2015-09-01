@@ -195,7 +195,7 @@ public class ProjectSync {
             collectRequest.setRepositories(mavenUtil.getRepos());
             CollectResult collectResult = mavenUtil.getSystem().collectDependencies(mavenUtil.getSession(), collectRequest);
 
-            collectResult.getRoot().accept(new ConsoleDependencyGraphDumper());
+            collectResult.getRoot().accept(new ConsoleDependencyGraphDumper(mavenUtil.getPrintStream()));
             collectResult.getRoot().accept(artifactSync);
         } catch (DependencyCollectionException e) {
             throw new RuntimeException(e);
