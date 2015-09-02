@@ -95,7 +95,11 @@ public class ProjectSync {
     private String buildProjectDescription(MavenProject project) {
         // TODO: add url, organization, developers, contributors, mailing lists, etc..
 
-        String description = "#Description\n\n" + project.getDescription();
+
+        String description = "";
+        if( project.getDescription()!=null && project.getDescription().trim().length()>0) {
+            description += "#Description\n\n" + project.getDescription();
+        }
 
         if (!project.getLicenses().isEmpty()) {
             description += "\nLicenses\n----\n\n";
@@ -107,7 +111,7 @@ public class ProjectSync {
         if( !project.getDevelopers().isEmpty()) {
             description += "\nDevelopers\n----\n\n";
             for (Developer developer : project.getDevelopers()) {
-                description += " * "+developer.getName()+" ("+developer.getEmail()+")";
+                description += " * "+developer.getName()+" ("+developer.getEmail()+")\n";
             }
         }
 

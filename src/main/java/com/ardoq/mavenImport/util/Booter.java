@@ -11,6 +11,7 @@ import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.repository.LocalRepository;
 import org.eclipse.aether.repository.RemoteRepository;
+import org.eclipse.aether.util.graph.selector.ExclusionDependencySelector;
 
 /**
  * A helper to boot the repository system and a repository system session.
@@ -35,6 +36,8 @@ public class Booter
 
         session.setTransferListener( new ConsoleTransferListener(out) );
         session.setRepositoryListener( new ConsoleRepositoryListener(out) );
+
+        session.setDependencySelector(new ExclusionDependencySelector());
 
         // uncomment to generate dirty trees
         // session.setDependencyGraphTransformer( null );

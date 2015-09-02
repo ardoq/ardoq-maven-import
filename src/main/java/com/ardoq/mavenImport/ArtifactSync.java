@@ -36,6 +36,7 @@ public class ArtifactSync implements DependencyVisitor {
     }
 
     public boolean visitEnter(DependencyNode node) {
+
         Artifact artifact = node.getArtifact();
         String artifactVersionComponentName = getArtifactVersionComponentName(artifact);
 
@@ -52,6 +53,17 @@ public class ArtifactSync implements DependencyVisitor {
         fields.put("artifactId", node.getArtifact().getArtifactId());
         fields.put("version", node.getArtifact().getVersion());
         versionComp.setFields(fields);
+
+        String description = "";
+        if(artifact.isSnapshot()){
+            description += " #snapshot";
+        }
+        if(node.getDependency().isOptional()){
+            description += " #optional";
+        }
+        versionComp.setDescription(description);
+
+        node.getDependency().getExclusions();
 
         System.out.println("Adding Version component "+artifactVersionComponentName+" of type "+COMPONENT_TYPE_VERSION+ ", parent: "+artifactCompId);
         versionComp = ardoqSync.addComponent(versionComp);
@@ -156,7 +168,7 @@ public class ArtifactSync implements DependencyVisitor {
             if ("test".equals(scope)) {
                 refType = refTypeTest;
             }
-            Reference ref = new Reference(ardoqSync.getWorkspace().getId(), scope, sourceId, targetId, refType);
+            Reference ref = new Reference(ardoqSync.getWorkspace().getId(), " #"+scope, sourceId, targetId, refType);
             references.put(sourceId + "," + targetId, ref);
         }
         return true;
