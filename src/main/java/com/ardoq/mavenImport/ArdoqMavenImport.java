@@ -64,18 +64,16 @@ public class ArdoqMavenImport {
             MavenUtil mavenUtil = new MavenUtil(System.out);
             ProjectSync projectSync = new ProjectSync(ardoqSync,mavenUtil);
             projectSync.syncProjects(cmd.getArgList());
+            projectSync.addExclusions(mavenUtil);
+
             ardoqSync.updateWorkspaceIfDifferent(workspaceInstance);
             ardoqSync.deleteNotSyncedItems();
+
         }
         catch (MissingOptionException moe) {
             printHelp(options);
         }
     }
-
-
-
-
-
 
 
 

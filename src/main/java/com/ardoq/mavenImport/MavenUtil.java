@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.PrintStream;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
@@ -19,6 +20,7 @@ import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.ArtifactResult;
 import org.eclipse.aether.util.repository.AuthenticationBuilder;
 
+import com.ardoq.mavenImport.util.ArdoqExclusionDependencySelector;
 import com.ardoq.mavenImport.util.Booter;
 
 public class MavenUtil {
@@ -41,6 +43,10 @@ public class MavenUtil {
 
     public RepositorySystemSession getSession() {
         return session;
+    }
+
+    public Map<Artifact,ArdoqExclusionDependencySelector> getDependencySelectors() {
+        return ((ArdoqExclusionDependencySelector)session.getDependencySelector()).getDependencySelectors();
     }
 
     public List<RemoteRepository> getRepos() {

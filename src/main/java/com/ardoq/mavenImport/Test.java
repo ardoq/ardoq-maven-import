@@ -8,7 +8,7 @@ public class Test {
 //		String workspaceName = "Maventest";
 //		String modelName = "Maven";
 
-        String apiToken = "8463d09f39f542b4a8718c2fadd9b991";
+        String apiToken = "b6e19ee7ee214e119ad8c397feb2fb43";
         String apiHost = "http://dockerhost";
         String workspaceName = "Kafka";
         String modelName = "Maven";

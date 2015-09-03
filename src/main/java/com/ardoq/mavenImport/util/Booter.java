@@ -3,15 +3,17 @@ package com.ardoq.mavenImport.util;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils;
 import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
+import org.eclipse.aether.artifact.Artifact;
 import org.eclipse.aether.repository.LocalRepository;
 import org.eclipse.aether.repository.RemoteRepository;
-import org.eclipse.aether.util.graph.selector.ExclusionDependencySelector;
 
 /**
  * A helper to boot the repository system and a repository system session.
@@ -37,10 +39,9 @@ public class Booter
         session.setTransferListener( new ConsoleTransferListener(out) );
         session.setRepositoryListener( new ConsoleRepositoryListener(out) );
 
-        session.setDependencySelector(new ExclusionDependencySelector());
+        Map<Artifact,ArdoqExclusionDependencySelector> dependencySelectors = new HashMap<Artifact,ArdoqExclusionDependencySelector>();
 
-        // uncomment to generate dirty trees
-        // session.setDependencyGraphTransformer( null );
+        session.setDependencySelector(new ArdoqExclusionDependencySelector(dependencySelectors));
 
         return session;
     }

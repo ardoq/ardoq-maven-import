@@ -36,8 +36,10 @@ public class ArtifactSync implements DependencyVisitor {
     }
 
     public boolean visitEnter(DependencyNode node) {
+        return addArtifactVersion(node.getArtifact(), node.getDependency().isOptional());
+    }
 
-        Artifact artifact = node.getArtifact();
+    public boolean addArtifactVersion(Artifact artifact, boolean isOptional) {
         String artifactVersionComponentName = getArtifactVersionComponentName(artifact);
 
         if (componentNameIdMap.containsKey(artifactVersionComponentName)) {
@@ -49,21 +51,20 @@ public class ArtifactSync implements DependencyVisitor {
         versionComp.setParent(artifactCompId);
 
         Map<String, Object> fields = new HashMap<String, Object>();
-        fields.put("groupId", node.getArtifact().getGroupId());
-        fields.put("artifactId", node.getArtifact().getArtifactId());
-        fields.put("version", node.getArtifact().getVersion());
+        fields.put("groupId", artifact.getGroupId());
+        fields.put("artifactId", artifact.getArtifactId());
+        fields.put("version", artifact.getVersion());
         versionComp.setFields(fields);
 
         String description = "";
         if(artifact.isSnapshot()){
             description += " #snapshot";
         }
-        if(node.getDependency().isOptional()){
+        if(isOptional){
             description += " #optional";
         }
-        versionComp.setDescription(description);
 
-        node.getDependency().getExclusions();
+        versionComp.setDescription(description);
 
         System.out.println("Adding Version component "+artifactVersionComponentName+" of type "+COMPONENT_TYPE_VERSION+ ", parent: "+artifactCompId);
         versionComp = ardoqSync.addComponent(versionComp);
@@ -149,7 +150,6 @@ public class ArtifactSync implements DependencyVisitor {
     public boolean visitLeave(DependencyNode node) {
         Map<String, Integer> refTypes = ardoqSync.getModel().getReferenceTypes();
         int refTypeDep = refTypes.get("Dependency");
-        int refTypeTest = refTypes.get("Test");
 
         Artifact sourceArtifact = node.getArtifact();
         String sourceName = getArtifactVersionComponentName(sourceArtifact);
@@ -164,15 +164,33 @@ public class ArtifactSync implements DependencyVisitor {
             String targetName = getArtifactVersionComponentName(targetArtifact);
             String targetId = componentNameIdMap.get(targetName);
             String scope = child.getDependency().getScope();
-            int refType = refTypeDep;
-            if ("test".equals(scope)) {
-                refType = refTypeTest;
-            }
-            Reference ref = new Reference(ardoqSync.getWorkspace().getId(), " #"+scope, sourceId, targetId, refType);
+            Reference ref = new Reference(ardoqSync.getWorkspace().getId(), " #"+scope, sourceId, targetId, refTypeDep);
             references.put(sourceId + "," + targetId, ref);
         }
         return true;
     }
+
+    public void addReference(Artifact sourceArtifact, Artifact targetArtifact, String referenceType) {
+        String sourceName = getArtifactVersionComponentName(sourceArtifact);
+        String sourceId = componentNameIdMap.get(sourceName);
+        if(sourceId==null) {
+            System.err.println("Source "+sourceName+ " not found.");
+            return;
+        }
+        String targetName = getArtifactVersionComponentName(targetArtifact);
+        String targetId = componentNameIdMap.get(targetName);
+        if(targetId==null) {
+            System.err.println("Target "+targetName+ " not found.");
+            return;
+        }
+
+        Map<String, Integer> refTypes = ardoqSync.getModel().getReferenceTypes();
+        int refTypeExclusion = refTypes.get(referenceType);
+        Reference ref = new Reference(ardoqSync.getWorkspace().getId(), " #excluded", sourceId, targetId, refTypeExclusion);
+        ardoqSync.addReference(ref);
+    }
+
+
 
     public void syncReferences() {
         for (Reference ref : references.values()) {

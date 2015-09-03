@@ -16,6 +16,7 @@ import org.eclipse.aether.collection.DependencyCollectionException;
 import org.eclipse.aether.graph.Dependency;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 
+import com.ardoq.mavenImport.util.ArdoqExclusionDependencySelector;
 import com.ardoq.mavenImport.util.ConsoleDependencyGraphDumper;
 import com.ardoq.model.Component;
 import com.ardoq.model.Reference;
@@ -42,6 +43,18 @@ public class ProjectSync {
         componentNameIdMap = new HashMap<String, String>();
     }
 
+
+    public void addExclusions(MavenUtil mavenUtil) {
+        Map<Artifact,ArdoqExclusionDependencySelector> dependencySelectors = mavenUtil.getDependencySelectors();
+        for(Artifact a:dependencySelectors.keySet()){
+
+            ArdoqExclusionDependencySelector depsel = dependencySelectors.get(a);
+            for(Artifact ex:depsel.getExcluded()){
+                artifactSync.addArtifactVersion(ex,false);
+                artifactSync.addReference(a, ex, "Exclusion");
+            }
+        }
+    }
 
 
     public void syncProjects(List<String> projects) throws Exception {
