@@ -3,7 +3,6 @@ package com.ardoq.mavenImport.util;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -12,8 +11,13 @@ import org.eclipse.aether.DefaultRepositorySystemSession;
 import org.eclipse.aether.RepositorySystem;
 import org.eclipse.aether.RepositorySystemSession;
 import org.eclipse.aether.artifact.Artifact;
+import org.eclipse.aether.collection.DependencySelector;
 import org.eclipse.aether.repository.LocalRepository;
 import org.eclipse.aether.repository.RemoteRepository;
+import org.eclipse.aether.util.graph.selector.AndDependencySelector;
+import org.eclipse.aether.util.graph.selector.ExclusionDependencySelector;
+import org.eclipse.aether.util.graph.selector.OptionalDependencySelector;
+import org.eclipse.aether.util.graph.selector.ScopeDependencySelector;
 
 /**
  * A helper to boot the repository system and a repository system session.
@@ -29,7 +33,7 @@ public class Booter
         // return org.eclipse.aether.examples.plexus.PlexusRepositorySystemFactory.newRepositorySystem();
     }
 
-    public static DefaultRepositorySystemSession newRepositorySystemSession( RepositorySystem system, PrintStream out)
+    public static DefaultRepositorySystemSession newRepositorySystemSession( RepositorySystem system, PrintStream out, Map<Artifact,ArdoqExclusionDependencySelector> dependencySelectors, String ... scopes)
     {
         DefaultRepositorySystemSession session = MavenRepositorySystemUtils.newSession();
 
@@ -39,9 +43,12 @@ public class Booter
         session.setTransferListener( new ConsoleTransferListener(out) );
         session.setRepositoryListener( new ConsoleRepositoryListener(out) );
 
-        Map<Artifact,ArdoqExclusionDependencySelector> dependencySelectors = new HashMap<Artifact,ArdoqExclusionDependencySelector>();
+        DependencySelector depFilter =
+                new AndDependencySelector( new ScopeDependencySelector(scopes),
+                                           new OptionalDependencySelector(),
+                                           new ArdoqExclusionDependencySelector(dependencySelectors) );
 
-        session.setDependencySelector(new ArdoqExclusionDependencySelector(dependencySelectors));
+        session.setDependencySelector(depFilter);
 
         return session;
     }
