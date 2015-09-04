@@ -8,13 +8,14 @@ public class Test {
 //		String workspaceName = "Maventest";
 //		String modelName = "Maven";
 
-        String apiToken = "7557cad30b684357b42405addd9309f2";
+        String apiToken = "435cf12a225747cb9678b8050d2c0887";
         String apiHost = "http://dockerhost";
-        String workspaceName = "Kafka";
+        String workspaceName = "Dropwizard";
+        String artifact = "io.dropwizard:dropwizard-core:0.8.1";
         String modelName = "Maven";
 
 //        ArdoqMavenImport.main(new String[] { "-h", apiHost, "-t", apiToken, "-w", workspaceName, "-m", modelName, "org.apache.kafka:contrib_2.10:0.8.0" });
-        ArdoqMavenImport.main(new String[] { "-h", apiHost, "-t", apiToken, "-w", workspaceName, "-m", modelName, "io.dropwizard:dropwizard-core:0.8.1" });
+        ArdoqMavenImport.main(new String[] { "-h", apiHost, "-t", apiToken, "-w", workspaceName, "-m", modelName, artifact });
 
 
 //		ArdoqMavenImport.main(new String[]{"-t",apiToken,"-w",workspaceName,"-m",modelName,"pom.xml"});;

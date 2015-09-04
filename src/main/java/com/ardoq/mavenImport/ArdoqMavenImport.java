@@ -1,6 +1,7 @@
 package com.ardoq.mavenImport;
 
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 
 import org.apache.commons.cli.BasicParser;
@@ -60,7 +61,7 @@ public class ArdoqMavenImport {
 
             Workspace workspaceInstance = ardoqSync.getWorkspace();
             workspaceInstance.setDescription("Maven POM import "+new SimpleDateFormat("yyyy.MM.dd HH:mm").format(new Date()));
-
+            workspaceInstance.setViews(Arrays.asList("processflow","componenttree","tableview","reader","integrations"));
             MavenUtil mavenUtil = new MavenUtil(System.out, "test", "provided");
             ProjectSync projectSync = new ProjectSync(ardoqSync,mavenUtil);
             projectSync.syncProjects(cmd.getArgList());
