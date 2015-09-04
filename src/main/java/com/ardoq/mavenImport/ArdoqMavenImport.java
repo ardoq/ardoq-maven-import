@@ -61,7 +61,7 @@ public class ArdoqMavenImport {
             Workspace workspaceInstance = ardoqSync.getWorkspace();
             workspaceInstance.setDescription("Maven POM import "+new SimpleDateFormat("yyyy.MM.dd HH:mm").format(new Date()));
 
-            MavenUtil mavenUtil = new MavenUtil(System.out);
+            MavenUtil mavenUtil = new MavenUtil(System.out, "test", "provided");
             ProjectSync projectSync = new ProjectSync(ardoqSync,mavenUtil);
             projectSync.syncProjects(cmd.getArgList());
             projectSync.addExclusions(mavenUtil);

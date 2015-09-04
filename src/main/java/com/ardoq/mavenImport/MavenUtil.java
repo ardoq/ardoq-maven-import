@@ -3,6 +3,7 @@ package com.ardoq.mavenImport;
 import java.io.File;
 import java.io.FileReader;
 import java.io.PrintStream;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -29,11 +30,13 @@ public class MavenUtil {
     final RepositorySystemSession session;
     final List<RemoteRepository> repos;
     final PrintStream printStream;
+    private Map<Artifact,ArdoqExclusionDependencySelector> dependencySelectors;
 
-    public MavenUtil(PrintStream out){
+    public MavenUtil(PrintStream out, String ... scopes){
         this.printStream = out;
+        dependencySelectors = new HashMap<Artifact,ArdoqExclusionDependencySelector>();
         this.system = Booter.newRepositorySystem();
-        this.session = Booter.newRepositorySystemSession(system, out);
+        this.session = Booter.newRepositorySystemSession(system, out, dependencySelectors, scopes);
         this.repos = Booter.newRepositories(system, session);
     }
 
@@ -46,7 +49,7 @@ public class MavenUtil {
     }
 
     public Map<Artifact,ArdoqExclusionDependencySelector> getDependencySelectors() {
-        return ((ArdoqExclusionDependencySelector)session.getDependencySelector()).getDependencySelectors();
+        return dependencySelectors;
     }
 
     public List<RemoteRepository> getRepos() {

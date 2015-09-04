@@ -3,6 +3,7 @@ package com.ardoq.mavenImport.util;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -85,7 +86,6 @@ public class ArdoqExclusionDependencySelector implements DependencySelector
             if ( matches( exclusion, artifact ) )
             {
                 excluded.add(artifact);
-//                System.out.println("Exclusion "+exclusion+ " Artifact "+ artifact+ " Dependency "+dependency);
                 return false;
             }
         }
@@ -122,9 +122,9 @@ public class ArdoqExclusionDependencySelector implements DependencySelector
     {
         Dependency dependency = context.getDependency();
         Collection<Exclusion> exclusions = ( dependency != null ) ? dependency.getExclusions() : null;
-        if ( exclusions == null || exclusions.isEmpty() )
+        if ( exclusions == null)
         {
-            return this;
+            exclusions = new HashSet<Exclusion>();
         }
 
         Exclusion[] merged = this.exclusions;
@@ -151,10 +151,10 @@ public class ArdoqExclusionDependencySelector implements DependencySelector
                 count++;
             }
         }
-        if ( merged == this.exclusions )
-        {
-            return this;
-        }
+//        if ( merged == this.exclusions )
+//        {
+//            return this;
+//        }
         if ( merged.length != count )
         {
             Exclusion[] tmp = new Exclusion[count];
