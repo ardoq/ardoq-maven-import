@@ -60,14 +60,24 @@ public class ArdoqMavenImport {
             SyncUtil ardoqSync = new SyncUtil(ardoqClient,workspace,modelName);
 
             Workspace workspaceInstance = ardoqSync.getWorkspace();
-            workspaceInstance.setDescription("Maven POM import "+new SimpleDateFormat("yyyy.MM.dd HH:mm").format(new Date()));
+            String description = "This is an automatically imported workspace, "
+                    + "based on information from the Maven Project Object Model (POM) with coordinates: ***"+cmd.getArgList()+"***\n"
+                    + "\n"
+                    + "> Please don't edit this workspace manually! Changes will be overwritten the next time the import is triggered. If you need more documentation, create a separate workspace and create implicit references into this workspace. \n"
+                    + "\n"
+                    + "Import timestamp: "+new SimpleDateFormat("yyyy.MM.dd HH:mm").format(new Date());
+
+            workspaceInstance.setDescription(description);
             workspaceInstance.setViews(Arrays.asList("processflow","componenttree","tableview","reader","integrations"));
             MavenUtil mavenUtil = new MavenUtil(System.out, "test", "provided");
             ProjectSync projectSync = new ProjectSync(ardoqSync,mavenUtil);
             projectSync.syncProjects(cmd.getArgList());
             projectSync.addExclusions(mavenUtil);
 
+            System.out.println("updating workspace");
             ardoqSync.updateWorkspaceIfDifferent(workspaceInstance);
+
+            System.out.println("Deleting not synced references");
             ardoqSync.deleteNotSyncedItems();
 
         }

@@ -8,7 +8,7 @@ public class Test {
 //		String workspaceName = "Maventest";
 //		String modelName = "Maven";
 
-        String apiToken = "435cf12a225747cb9678b8050d2c0887";
+        String apiToken = "ffc9ac0c64a84e99b62ac3ca2a873335";
         String apiHost = "http://dockerhost";
         String workspaceName = "Dropwizard";
         String artifact = "io.dropwizard:dropwizard-core:0.8.1";
