@@ -24,8 +24,11 @@ public class ArtifactSync implements DependencyVisitor {
     Map<String, String> componentNameIdMap;
     Map<String, Reference> references;
 
-    public ArtifactSync(SyncUtil ardoqSync) {
+    final MavenUtil mavenUtil;
+
+    public ArtifactSync(SyncUtil ardoqSync, MavenUtil mavenUtil) {
         this.ardoqSync = ardoqSync;
+        this.mavenUtil = mavenUtil;
 
         COMPONENT_TYPE_GROUP = ardoqSync.getModel().getComponentTypeByName("Group");
         COMPONENT_TYPE_ARTIFACT = ardoqSync.getModel().getComponentTypeByName("Artifact");
@@ -54,6 +57,8 @@ public class ArtifactSync implements DependencyVisitor {
         fields.put("groupId", artifact.getGroupId());
         fields.put("artifactId", artifact.getArtifactId());
         fields.put("version", artifact.getVersion());
+        mavenUtil.addLicense(artifact, fields);
+
         versionComp.setFields(fields);
 
         String description = "";
@@ -78,6 +83,7 @@ public class ArtifactSync implements DependencyVisitor {
 
         return true;
     }
+
 
     /**
      * Adds the artifact version (Version in Ardoq) as a child of an Artifact node.

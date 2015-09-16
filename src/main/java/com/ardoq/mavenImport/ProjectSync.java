@@ -1,6 +1,7 @@
 package com.ardoq.mavenImport;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -35,7 +36,7 @@ public class ProjectSync {
 
     public ProjectSync(SyncUtil ardoqSync, MavenUtil mavenUtil) {
         this.ardoqSync = ardoqSync;
-        this.artifactSync = new ArtifactSync(ardoqSync);
+        this.artifactSync = new ArtifactSync(ardoqSync, mavenUtil);
         this.mavenUtil = mavenUtil;
 
         COMPONENT_TYPE_PROJECT = ardoqSync.getModel().getComponentTypeByName("Project");
@@ -57,12 +58,25 @@ public class ProjectSync {
     }
 
 
-    public void syncProjects(List<String> projects) throws Exception {
+    /**
+     * @param projects
+     * @return The component ID of the first project in the projects list
+     * @throws Exception
+     */
+    public List<String> syncProjects(List<String> projects) throws Exception {
+        List<String> projectIDs = new LinkedList<String>();
         for (String project : projects) {
-            syncProject(project);
+            String pid = syncProject(project);
+            projectIDs.add(pid);
         }
+        return projectIDs;
     }
 
+    /**
+     * @param projectStr
+     * @return The component ID of the project
+     * @throws ArtifactResolutionException
+     */
     public String syncProject(String projectStr) throws ArtifactResolutionException  {
         MavenProject mavenProject = mavenUtil.loadProject(projectStr);
         String ret = syncProject(mavenProject);
@@ -91,6 +105,7 @@ public class ProjectSync {
         fields.put("groupId", project.getGroupId());
         fields.put("artifactId", project.getArtifactId());
         fields.put("version", project.getVersion());
+        mavenUtil.addLicense(project, fields);
 
         ardoqProjectComponent.setFields(fields);
         ardoqProjectComponent = ardoqSync.addComponent(ardoqProjectComponent);

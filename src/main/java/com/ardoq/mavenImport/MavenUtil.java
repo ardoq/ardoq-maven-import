@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.maven.model.License;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.project.MavenProject;
@@ -20,11 +21,15 @@ import org.eclipse.aether.resolution.ArtifactRequest;
 import org.eclipse.aether.resolution.ArtifactResolutionException;
 import org.eclipse.aether.resolution.ArtifactResult;
 import org.eclipse.aether.util.repository.AuthenticationBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.ardoq.mavenImport.util.ArdoqExclusionDependencySelector;
 import com.ardoq.mavenImport.util.Booter;
 
 public class MavenUtil {
+
+    private static final Logger logger = LoggerFactory.getLogger(MavenUtil.class);
 
     final RepositorySystem system;
     final RepositorySystemSession session;
@@ -76,6 +81,32 @@ public class MavenUtil {
 
     public MavenProject loadProject(String projectStr) throws ArtifactResolutionException {
         Artifact artifact = new DefaultArtifact(projectStr);
+        return loadProject(artifact);
+    }
+
+    public void addLicense(Artifact artifact, Map<String, Object> fields) {
+        try {
+            MavenProject project = loadProject(artifact);
+            addLicense(project, fields);
+        } catch (Exception ignore) {
+            logger.debug("",ignore);
+        }
+    }
+
+    public void addLicense(MavenProject project, Map<String, Object> fields) {
+        List<License> licenses = project.getLicenses();
+        if(!licenses.isEmpty()){
+            String licenseString = "";
+            for(License license:licenses){
+                licenseString += license.getName()+", ";
+            }
+            licenseString = licenseString.substring(0, licenseString.length()-2);
+            fields.put("license", licenseString);
+        }
+    }
+
+
+    public MavenProject loadProject(Artifact artifact) throws ArtifactResolutionException {
         Artifact pomArtifact = new DefaultArtifact(artifact.getGroupId(), artifact.getArtifactId(), "pom", artifact.getVersion());
         ArtifactRequest artifactreq = new ArtifactRequest();
         artifactreq.setArtifact(pomArtifact);
