@@ -73,6 +73,18 @@ public class ArdoqMavenImport {
             ArdoqMavenImport ardoqMavenImport = new ArdoqMavenImport(host, workspace, modelName, org, token);
             MavenUtil mavenUtil = new MavenUtil(System.out, "test", "provided");
 
+            if(cmd.hasOption("r")){
+                String extrarepo = cmd.getOptionValue("r");
+                if(cmd.hasOption("u") && cmd.hasOption("p")){
+                    String username = cmd.getOptionValue("u");
+                    String password = cmd.getOptionValue("p");
+                    mavenUtil.addRepository(extrarepo, username, password);
+                }
+                else{
+                    mavenUtil.addRepository(extrarepo);
+                }
+            }
+
             ardoqMavenImport.startImport(importList,mavenUtil);
 
         }
@@ -201,6 +213,15 @@ public class ArdoqMavenImport {
 
         Option organization = new Option("o","organization",true,"Ardoq organization name");
         options.addOption(organization);
+
+        Option extrarepo = new Option("r","repository",true,"Extra repository URL");
+        options.addOption(extrarepo);
+
+        Option extrarepouser = new Option("u","username",true,"Extra repository user name");
+        options.addOption(extrarepouser);
+
+        Option extrarepopass = new Option("p","password",true,"Extra repository password");
+        options.addOption(extrarepopass);
 
         Option help = new Option("help", "print this help message");
         options.addOption(help);
