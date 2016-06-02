@@ -26,6 +26,8 @@ import com.ardoq.model.Workspace;
 import com.ardoq.service.FieldService;
 import com.ardoq.util.SyncUtil;
 
+import retrofit.RestAdapter;
+
 
 
 /**
@@ -37,7 +39,6 @@ public class ArdoqMavenImport {
 
     String host;
     String workspaceName;
-    String modelName;
     String org;
     String token;
 
@@ -65,12 +66,11 @@ public class ArdoqMavenImport {
 
             String host = cmd.getOptionValue("h","https://app.ardoq.com");
             String token = cmd.getOptionValue("t");
-            String modelName = cmd.getOptionValue("m", "Maven");
             String org = cmd.getOptionValue("o","ardoq");
             String workspace = cmd.getOptionValue("w");
             List<String> importList = cmd.getArgList();
 
-            ArdoqMavenImport ardoqMavenImport = new ArdoqMavenImport(host, workspace, modelName, org, token);
+            ArdoqMavenImport ardoqMavenImport = new ArdoqMavenImport(host, workspace, org, token);
             MavenUtil mavenUtil = new MavenUtil(System.out, "test", "provided");
 
             if(cmd.hasOption("r")){
@@ -93,10 +93,9 @@ public class ArdoqMavenImport {
         }
     }
 
-    public ArdoqMavenImport(String host, String workspaceName, String modelName, String org, String token){
+    public ArdoqMavenImport(String host, String workspaceName, String org, String token){
         this.host = host;
         this.workspaceName = workspaceName;
-        this.modelName = modelName;
         this.org = org;
         this.token = token;
     }
@@ -109,6 +108,7 @@ public class ArdoqMavenImport {
 
         ArdoqClient ardoqClient = new ArdoqClient(host,token);
         ardoqClient.setOrganization(org);
+        ardoqClient.setLogLevel(RestAdapter.LogLevel.FULL);
 
         if(workspaceName==null || workspaceName.trim().length()==0){
             String artifactStr = importList.get(0);
@@ -116,38 +116,32 @@ public class ArdoqMavenImport {
             workspaceName = "Maven project "+mavenProject.getName();
         }
 
+        Workspace workspace = findOrCreateWorkspace(importList, ardoqClient);
 
-        Model model = ardoqClient.model().findOrCreate(modelName, ArdoqMavenImport.class.getResourceAsStream("/model.json"));
+        Model model = ardoqClient.model().getModelById(workspace.getComponentModel());
+        System.out.println(model);
+
         String COMPONENT_TYPE_PROJECT = model.getComponentTypeByName("Project");
         String COMPONENT_TYPE_GROUP = model.getComponentTypeByName("Group");
         String COMPONENT_TYPE_ARTIFACT = model.getComponentTypeByName("Artifact");
         String COMPONENT_TYPE_VERSION = model.getComponentTypeByName("Version");
 
         Map<String, Field> fields = getModelFields(ardoqClient, model);
-        ensureFieldExist(ardoqClient.field(), model, fields, "license", Arrays.asList(COMPONENT_TYPE_PROJECT, COMPONENT_TYPE_GROUP, COMPONENT_TYPE_ARTIFACT, COMPONENT_TYPE_VERSION));
-        ensureFieldExist(ardoqClient.field(), model, fields, "groupId", Arrays.asList(COMPONENT_TYPE_PROJECT, COMPONENT_TYPE_GROUP, COMPONENT_TYPE_ARTIFACT, COMPONENT_TYPE_VERSION));
-        ensureFieldExist(ardoqClient.field(), model, fields, "artifactId", Arrays.asList(COMPONENT_TYPE_PROJECT, COMPONENT_TYPE_ARTIFACT, COMPONENT_TYPE_VERSION));
-        ensureFieldExist(ardoqClient.field(), model, fields, "version", Arrays.asList(COMPONENT_TYPE_PROJECT, COMPONENT_TYPE_VERSION));
+        ensureFieldExist(ardoqClient.field(), model, fields, "license", Arrays.asList(COMPONENT_TYPE_PROJECT, COMPONENT_TYPE_GROUP, COMPONENT_TYPE_ARTIFACT, COMPONENT_TYPE_VERSION), FieldType.TEXT, "");
+        ensureFieldExist(ardoqClient.field(), model, fields, "groupId", Arrays.asList(COMPONENT_TYPE_PROJECT, COMPONENT_TYPE_GROUP, COMPONENT_TYPE_ARTIFACT, COMPONENT_TYPE_VERSION), FieldType.TEXT, "");
+        ensureFieldExist(ardoqClient.field(), model, fields, "artifactId", Arrays.asList(COMPONENT_TYPE_PROJECT, COMPONENT_TYPE_ARTIFACT, COMPONENT_TYPE_VERSION), FieldType.TEXT, "");
+        ensureFieldExist(ardoqClient.field(), model, fields, "version", Arrays.asList(COMPONENT_TYPE_PROJECT, COMPONENT_TYPE_VERSION), FieldType.TEXT, "");
 
-        SyncUtil ardoqSync = new SyncUtil(ardoqClient,workspaceName,modelName);
+        SyncUtil ardoqSync = new SyncUtil(ardoqClient, workspace);
 
-        Workspace workspaceInstance = ardoqSync.getWorkspace();
-        String description = "This is an automatically imported workspace, "
-                + "based on information from the Maven Project Object Model (POM) with coordinates: ***"+importList+"***\n"
-                + "\n"
-                + "> Please don't edit this workspace manually! Changes will be overwritten the next time the import is triggered. If you need more documentation, create a separate workspace and create implicit references into this workspace. \n"
-                + "\n"
-                + "Import timestamp: "+new SimpleDateFormat("yyyy.MM.dd HH:mm").format(new Date());
-
-        workspaceInstance.setDescription(description);
-        workspaceInstance.setViews(Arrays.asList("processflow","componenttree","tableview","reader","integrations"));
+        workspace.setViews(Arrays.asList("processflow","componenttree","tableview","reader","integrations"));
         ProjectSync projectSync = new ProjectSync(ardoqSync,mavenUtil);
-        workspaceID = workspaceInstance.getId();
+        workspaceID = workspace.getId();
         List<String> projectIDs = projectSync.syncProjects(importList);
         projectSync.addExclusions(mavenUtil);
 
         System.out.println("updating workspace");
-        ardoqSync.updateWorkspaceIfDifferent(workspaceInstance);
+        ardoqSync.updateWorkspaceIfDifferent(workspace);
 
         System.out.println("Deleting not synced references");
         ardoqSync.deleteNotSyncedItems();
@@ -155,12 +149,32 @@ public class ArdoqMavenImport {
         return projectIDs;
     }
 
+    public Workspace findOrCreateWorkspace(List<String> importList, ArdoqClient ardoqClient) throws IOException {
+        Workspace workspace = null;
+        List<Workspace> workspaces = ardoqClient.workspace().findWorkspacesByName(workspaceName);
+        if (workspaces.size()==0){
+            Model template = ardoqClient.model().findOrCreateTemplate("Maven Project 3", ArdoqMavenImport.class.getResourceAsStream("/model.json"));
+
+            String description = "This is an automatically imported workspace, "
+                    + "based on information from the Maven Project Object Model (POM) with coordinates: ***"+importList+"***\n"
+                    + "\n"
+                    + "> Please don't edit this workspace manually! Changes will be overwritten the next time the import is triggered. If you need more documentation, create a separate workspace and create implicit references into this workspace. \n"
+                    + "\n"
+                    + "Import timestamp: "+new SimpleDateFormat("yyyy.MM.dd HH:mm").format(new Date());
+
+            workspace = ardoqClient.workspace().createWorkspaceFromTemplate(workspaceName, template.getId(), description);
+        }else{
+            workspace = workspaces.get(0);
+        }
+        return workspace;
+    }
 
 
-    public static void ensureFieldExist(FieldService fieldService, Model model, Map<String, Field> fields, String fieldName, List<String> componentTypes) {
+
+    public static void ensureFieldExist(FieldService fieldService, Model model, Map<String, Field> fields, String fieldName, List<String> componentTypes, FieldType fieldType, String defaultValue) {
         Field field = fields.get(fieldName);
         if(field==null){
-            field = fieldService.createField(new Field(fieldName,fieldName,model.getId(),componentTypes,FieldType.TEXT));
+            field = fieldService.createField(new Field(fieldName,fieldName,model.getId(),componentTypes,fieldType,defaultValue));
             return;
         }
         // ensure that the field is associated with the correct component types

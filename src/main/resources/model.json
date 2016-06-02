@@ -1,6 +1,7 @@
 {
     "description":"Model to document Maven Projects, with parents and modules, as well as transitive dependencies",
     "lastModifiedByName":"Ardoq",
+    "useAsTemplate": true,
     "referenceTypes":{
         "0":{
             "name":"Exclusion",
@@ -53,7 +54,7 @@
             "svgStyle":"stroke: orange;stroke-dasharray:10,5"
         }
     },
-    "name":"Maven",
+    "name":"Maven Project 3",
     "root":{
         "p1442173523833":{
             "description":"",

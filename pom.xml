@@ -5,7 +5,7 @@
 
     <artifactId>ardoq-maven-import</artifactId>
     <groupId>com.ardoq.tools</groupId>
-    <version>0.1</version>
+    <version>0.2</version>
     <packaging>jar</packaging>
 
     <licenses>
@@ -108,7 +108,7 @@
         <dependency>
             <groupId>com.ardoq</groupId>
             <artifactId>java-api-client</artifactId>
-            <version>0.9.8</version>
+            <version>1.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>

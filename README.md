@@ -24,7 +24,7 @@ Fields:
 
 
 Relations:
-* Dependency (includes run time and comile time dependencies)
+* Dependency (includes run time and compile time dependencies)
 * Test scope dependency
 * Parent (only applies to Project)
 * Module (only applies to Project)
@@ -34,7 +34,7 @@ Relations:
 # Example usage
 ```
 mvn install
-java -jar target/ardoq-maven-import-0.1-bundle.jar -h http://dockerhost -t <apiToken> -w <workspace> -m <modelName> -o <organization> io.dropwizard:dropwizard-core:0.8.1
+java -jar target/ardoq-maven-import-0.2-bundle.jar -h http://localhost:8080 -t <apiToken> -w <workspace> -m <modelName> -o <organization> io.dropwizard:dropwizard-core:0.8.1
 ```
 
 
